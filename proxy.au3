@@ -13,12 +13,17 @@ Opt("TrayOnEventMode",1)
 Opt("TrayMenuMode",1)
 
 $exit = TrayCreateItem("Exit")
-TrayItemSetOnEvent(-1,"ExitEvent")
+TrayItemSetOnEvent($exit,"close")
 
 TraySetOnEvent($TRAY_EVENT_PRIMARYDOUBLE,"ToggleGui")
 
 TraySetState()
-TraySetClick (8)
+TraySetClick(8)
+
+$turnOnMenuItem = TrayCreateItem("On", -1, -1, 1)
+TrayItemSetOnEvent($turnOnMenuItem,"enableproxy")
+$turnOffMenuItem = TrayCreateItem("Off", -1, -1, 1)
+TrayItemSetOnEvent($turnOffMenuItem,"disableproxy")
 
 Func ToggleGui() 
   If $guishow = True Then
@@ -47,9 +52,12 @@ EndFunc
 Func enableproxy()
   setproxy("127.0.0.1", "8558")
   RunWait ("npm.cmd install", "")
-  $yaxypid = Run("node node_modules/yaxy/bin/proxy.js","", @SW_HIDE)
+  $yaxypid = Run("npm.cmd start","", @SW_HIDE)
   GUICtrlSetState($enablebtn, $GUI_DISABLE)
   GUICtrlSetState($disablebtn, $GUI_ENABLE)
+
+  TrayItemSetState($turnOnMenuItem,$TRAY_CHECKED)
+  TrayItemSetState($turnOffMenuItem,$TRAY_UNCHECKED)
 EndFunc
 
 Func disableproxy()
@@ -57,6 +65,14 @@ Func disableproxy()
   $res = ProcessClose  ($yaxypid)
   GUICtrlSetState($disablebtn, $GUI_DISABLE)
   GUICtrlSetState($enablebtn, $GUI_ENABLE)
+
+  TrayItemSetState($turnOffMenuItem,$TRAY_CHECKED)
+  TrayItemSetState($turnOnMenuItem,$TRAY_UNCHECKED)
+EndFunc
+
+Func close()
+  disableproxy()
+  Exit
 EndFunc
 
 enableproxy()
