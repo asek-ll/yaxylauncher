@@ -3,6 +3,10 @@
 #include <WindowsConstants.au3>
 #NoTrayIcon
 
+$yaxyPort = IniRead ( "yaxy-launcher.ini", "yaxy", "port", "8559" )
+$yaxyConfig = IniRead ( "yaxy-launcher.ini", "yaxy", "config", "" )
+$yaxyProxy = IniRead ( "yaxy-launcher.ini", "yaxy", "proxy", "" )
+
 GUICreate("Yaxy proxy", 150, 70, -1, -1, BitOr($WS_SYSMENU, $WS_MINIMIZEBOX))
 $enablebtn = GUICtrlCreateButton("On", 10, 10, 60)
 $disablebtn = GUICtrlCreateButton("Off", 80, 10, 60)
@@ -50,9 +54,27 @@ Func removeproxy()
 EndFunc
 
 Func enableproxy()
-  setproxy("127.0.0.1", "8558")
+  setproxy("127.0.0.1", $yaxyPort)
   RunWait ("npm.cmd install", "")
-  $yaxypid = Run("npm.cmd start","", @SW_HIDE)
+
+  $args = ""
+  
+  $args = $args & " --port " & $yaxyPort
+
+  If $yaxyConfig <> "" Then
+    $args = $args & " --config " & $yaxyConfig
+  EndIf
+
+  If $yaxyProxy <> "" Then
+    $args = $args & " --proxy " & $yaxyProxy
+  EndIf
+
+  $yaxypid = Run("node node_modules/yaxy/bin/proxy.js" & $args,"", @SW_HIDE)
+  If $yaxypid == 0 Then
+    MsgBox ( 4096, "Error", "Yaxy not started")
+    return
+  EndIf
+
   GUICtrlSetState($enablebtn, $GUI_DISABLE)
   GUICtrlSetState($disablebtn, $GUI_ENABLE)
 
