@@ -3,6 +3,10 @@
 #include <WindowsConstants.au3>
 #NoTrayIcon
 
+$yaxyPort = IniRead ( "yaxy-launcher.ini", "yaxy", "port", "8559" )
+$yaxyConfig = IniRead ( "yaxy-launcher.ini", "yaxy", "config", "" )
+$yaxyProxy = IniRead ( "yaxy-launcher.ini", "yaxy", "proxy", "" )
+
 GUICreate("Yaxy proxy", 150, 70, -1, -1, BitOr($WS_SYSMENU, $WS_MINIMIZEBOX))
 $enablebtn = GUICtrlCreateButton("On", 10, 10, 60)
 $disablebtn = GUICtrlCreateButton("Off", 80, 10, 60)
@@ -13,12 +17,17 @@ Opt("TrayOnEventMode",1)
 Opt("TrayMenuMode",1)
 
 $exit = TrayCreateItem("Exit")
-TrayItemSetOnEvent(-1,"ExitEvent")
+TrayItemSetOnEvent($exit,"close")
 
 TraySetOnEvent($TRAY_EVENT_PRIMARYDOUBLE,"ToggleGui")
 
 TraySetState()
-TraySetClick (8)
+TraySetClick(8)
+
+$turnOnMenuItem = TrayCreateItem("On", -1, -1, 1)
+TrayItemSetOnEvent($turnOnMenuItem,"enableproxy")
+$turnOffMenuItem = TrayCreateItem("Off", -1, -1, 1)
+TrayItemSetOnEvent($turnOffMenuItem,"disableproxy")
 
 Func ToggleGui() 
   If $guishow = True Then
@@ -45,11 +54,32 @@ Func removeproxy()
 EndFunc
 
 Func enableproxy()
-  setproxy("127.0.0.1", "8558")
+  setproxy("127.0.0.1", $yaxyPort)
   RunWait ("npm.cmd install", "")
-  $yaxypid = Run("node node_modules/yaxy/bin/proxy.js","", @SW_HIDE)
+
+  $args = ""
+  
+  $args = $args & " --port " & $yaxyPort
+
+  If $yaxyConfig <> "" Then
+    $args = $args & " --config " & $yaxyConfig
+  EndIf
+
+  If $yaxyProxy <> "" Then
+    $args = $args & " --proxy " & $yaxyProxy
+  EndIf
+
+  $yaxypid = Run("node node_modules/yaxy/bin/proxy.js" & $args,"", @SW_HIDE)
+  If $yaxypid == 0 Then
+    MsgBox ( 4096, "Error", "Yaxy not started")
+    return
+  EndIf
+
   GUICtrlSetState($enablebtn, $GUI_DISABLE)
   GUICtrlSetState($disablebtn, $GUI_ENABLE)
+
+  TrayItemSetState($turnOnMenuItem,$TRAY_CHECKED)
+  TrayItemSetState($turnOffMenuItem,$TRAY_UNCHECKED)
 EndFunc
 
 Func disableproxy()
@@ -57,6 +87,14 @@ Func disableproxy()
   $res = ProcessClose  ($yaxypid)
   GUICtrlSetState($disablebtn, $GUI_DISABLE)
   GUICtrlSetState($enablebtn, $GUI_ENABLE)
+
+  TrayItemSetState($turnOffMenuItem,$TRAY_CHECKED)
+  TrayItemSetState($turnOnMenuItem,$TRAY_UNCHECKED)
+EndFunc
+
+Func close()
+  disableproxy()
+  Exit
 EndFunc
 
 enableproxy()

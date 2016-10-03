@@ -1,0 +1,3 @@
+[yaxy]
+port=8558
+config=./yaxy-config.txt
