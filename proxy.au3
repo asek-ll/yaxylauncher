@@ -1,15 +1,20 @@
 #include <Constants.au3>
+#include <GUIConstants.au3>
 #include <GUIConstantsEx.au3>
 #include <WindowsConstants.au3>
 #NoTrayIcon
 
-$yaxyPort = IniRead ( "yaxy-launcher.ini", "yaxy", "port", "8559" )
+$yaxyPort = IniRead ( "yaxy-launcher.ini", "yaxy", "port", "8558" )
 $yaxyConfig = IniRead ( "yaxy-launcher.ini", "yaxy", "config", "" )
 $yaxyProxy = IniRead ( "yaxy-launcher.ini", "yaxy", "proxy", "" )
 
-GUICreate("Yaxy proxy", 150, 70, -1, -1, BitOr($WS_SYSMENU, $WS_MINIMIZEBOX))
-$enablebtn = GUICtrlCreateButton("On", 10, 10, 60)
-$disablebtn = GUICtrlCreateButton("Off", 80, 10, 60)
+$yaxyEnabled = False
+$globalEnabled = False
+
+GUICreate("Yaxy proxy", 154, 70, -1, -1, BitOr($WS_SYSMENU, $WS_MINIMIZEBOX))
+
+$yaxyBtn = GUICtrlCreateCheckbox("Yaxy", 10, 10, 60, 25, $BS_PUSHLIKE)
+$proxyBtn = GUICtrlCreateCheckbox("Global", 80, 10, 60, 25, $BS_PUSHLIKE)
 
 Dim $guishow = False
 
@@ -53,8 +58,16 @@ Func removeproxy()
   DllCall('WININET.DLL', 'long', 'InternetSetOption', 'int', 0, 'long', 39, 'str', 0, 'long', 0)
 EndFunc
 
-Func enableproxy()
+Func setGlobalProxy()
   setproxy("127.0.0.1", $yaxyPort)
+EndFunc
+
+Func enableproxy()
+
+  If $globalEnabled Then
+    setGlobalProxy()
+  EndIf
+
   RunWait ("npm.cmd install", "")
 
   $args = ""
@@ -75,21 +88,41 @@ Func enableproxy()
     return
   EndIf
 
-  GUICtrlSetState($enablebtn, $GUI_DISABLE)
-  GUICtrlSetState($disablebtn, $GUI_ENABLE)
+  GUICtrlSetState($yaxyBtn, $GUI_CHECKED)
 
   TrayItemSetState($turnOnMenuItem,$TRAY_CHECKED)
   TrayItemSetState($turnOffMenuItem,$TRAY_UNCHECKED)
+
+  $yaxyEnabled = True
 EndFunc
 
 Func disableproxy()
-  removeproxy()
+  If $globalEnabled Then
+    removeproxy()
+  EndIf
+
   $res = ProcessClose  ($yaxypid)
-  GUICtrlSetState($disablebtn, $GUI_DISABLE)
-  GUICtrlSetState($enablebtn, $GUI_ENABLE)
+
+  $yaxyEnabled = False
+
+  GUICtrlSetState($yaxyBtn, $GUI_UNCHECKED)
 
   TrayItemSetState($turnOffMenuItem,$TRAY_CHECKED)
   TrayItemSetState($turnOnMenuItem,$TRAY_UNCHECKED)
+EndFunc
+
+Func enableGlobalProxy()
+  $globalEnabled = True;
+  If $yaxyEnabled Then
+    setGlobalProxy()
+  EndIf
+EndFunc
+
+Func disableGlobalProxy()
+  $globalEnabled = False;
+  If $yaxyEnabled Then
+    removeproxy()
+  EndIf
 EndFunc
 
 Func close()
@@ -102,19 +135,30 @@ enableproxy()
 While 1
   $msg = GUIGetMsg()
 
-  Select
-    Case $msg = $enablebtn
-      enableproxy()
+  Switch $msg
+    Case $yaxyBtn
+      Switch GUICtrlRead($yaxyBtn)
+        Case $GUI_CHECKED
+          enableproxy()
+        Case $GUI_UNCHECKED
+          disableproxy()
+      EndSwitch
 
-    Case $msg = $disablebtn
-      disableproxy()
+    Case $proxyBtn
+      Switch GUICtrlRead($proxyBtn)
+        Case $GUI_CHECKED
+          enableGlobalProxy()
+        Case $GUI_UNCHECKED
+          disableGlobalProxy()
+      EndSwitch
 
-    Case $msg = $GUI_EVENT_CLOSE
+    Case $GUI_EVENT_CLOSE
       disableproxy()
       ExitLoop
-    Case $msg = $GUI_EVENT_MINIMIZE
+
+    Case $GUI_EVENT_MINIMIZE
       GUISetState(@SW_HIDE)
       $guishow = false
-  EndSelect
+  EndSwitch
 
 WEnd 
