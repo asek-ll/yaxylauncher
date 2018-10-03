@@ -1,3 +1,4 @@
+
 import os
 import xml.etree.ElementTree as ET
 
@@ -18,14 +19,40 @@ plugins = [
         {'dir': 'hr', 'name': 'hr'},
         {'dir': 'swdb', 'name': 'swdb'},
         {'dir': 'wishlist', 'name': 'wishlist'},
-        {'dir': 'tr', 'name': 'tr'},
         {'dir': 'jiratech-metrics', 'name': 'jiratech-metrics'},
+        {'dir': 'tr', 'name': 'tr'},
+        {'dir': 'calendar', 'name': 'calendar'},
+        {'dir': 'pm-dashboard', 'name': 'pm-dashboard'},
+        {'dir': 'commprj', 'name': 'commprj'},
+        {'dir': '../Jira/scripted-logic', 'name': 'scripted-logic'},
+        # {'dir': 'bundled-libs', 'name': 'bundled.libs'},
         ]
 
 ext_black_list = [
-        '.soy',
-        '.less'
+        '.soy'
         ]
+
+
+def create_file_rule(resource_path, file_path):
+    return "/" + resource_path + "/ => file://" + file_path.replace("\\", "/")
+
+def create_less_rule(resource_path, file_path):
+   return "/" + resource_path + "/ => bin: lessc " + file_path.replace("/", "\\").replace("\\", "\\\\")
+
+def create_folder_rule(resource_path, file_path):
+    return "/" + resource_path + "(.+)$/ => file://" + file_path.replace("\\", "/") + "$1"
+
+def create_rule(resource_path, file_path, ext):
+    if resource_path[-1:] == "/":
+        return create_folder_rule( resource_path, file_path)
+
+    resource_path += "(\?.+)?$"
+
+    if ext == '.less':
+        return create_less_rule(resource_path, file_path)
+
+    return create_file_rule(resource_path, file_path)
+
 
 conf = open("plugin_resources.txt", "w")
 conf.write("# vim: ft=config\n")
@@ -33,7 +60,7 @@ conf.write("[generated]\n")
 for plugin in plugins:
     plugin_dir = plugin['dir']
     plugin_name = plugin['name']
-    plugin_key = 'transas.jira6.'+plugin_name
+    plugin_key = 'transas.jira7.'+plugin_name
     conf.write("[" + plugin_name + "]\n")
 
     plugin_path = os.path.join(base_path, plugin_dir)
@@ -66,18 +93,16 @@ for plugin in plugins:
                         continue
 
                     resource_path = 'download/resources/' + plugin_key + ":" + key + "/" + name
-                    file_path = os.path.join(plugin_path, "src", "main", "resources", location).replace("\\", "/")
-
-                    if resource_path[-1:] == "/":
-                        resource_path += "(.+)$"
-                        file_path += "$1"
-                    else:
-                        resource_path += "$"
 
                     if target_host:
                         resource_path = target_host + ".+" + resource_path
 
-                    yaxy_rule = "/" + resource_path + "/ => file://" + file_path
+                    if location[0] == "/":
+                        location = location[1:]
+
+                    file_path = os.path.join(plugin_path, "src", "main", "resources", location)
+
+                    yaxy_rule = create_rule(resource_path, file_path, ext)
                     conf.write(yaxy_rule + "\n")
 
     conf.write("\n")

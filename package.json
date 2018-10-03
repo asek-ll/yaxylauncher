@@ -10,6 +10,6 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "yaxy": "0.2.0"
+    "yaxy": "^0.2.0"
   }
 }
